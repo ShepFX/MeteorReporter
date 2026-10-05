@@ -38,10 +38,7 @@ class MeteorReporterPanel extends PluginPanel
 	private static final String DISABLED = "Shared reports are disabled";
 	private static final String WEBSITE = "https://meteor.shep.rip";
 	private static final Color GOLD = new Color(255, 190, 45);
-	private static final Color PURPLE = new Color(180, 100, 255);
-	private static final Color BLUE = new Color(80, 155, 255);
 	private static final Color GREEN = new Color(90, 200, 120);
-	private static final Color RED = new Color(255, 85, 85);
 	/**
 	 * One colour per star size, cool for a nearly spent star through to gold for a fresh one.
 	 * The same scale the website uses, so a tier reads the same in both places.
@@ -414,23 +411,41 @@ class MeteorReporterPanel extends PluginPanel
 		return TIER_COLORS[Math.min(TIER_COLORS.length, Math.max(1, tier)) - 1];
 	}
 
-	static Color rankColor(int reports)
+	/**
+	 * Twelve ranks, highest first. The early steps are close together so somebody who shares a
+	 * handful of stars sees themselves move, and the gaps widen from there. These are the same
+	 * thresholds, names and colours the website's leaderboard uses - the table is duplicated in
+	 * MeteorReporterWeb's format.js and styles.css, so change one and change the other.
+	 */
+	private static final int[] RANK_AT = { 1500, 900, 600, 400, 250, 160, 100, 60, 30, 15, 5, 0 };
+
+	private static final String[] RANK_NAMES = {
+		"Legend", "Celestial", "Starcaller", "Comet Chaser", "Astronomer", "Skywatcher",
+		"Stargazer", "Prospector", "Surveyor", "Scout", "Spotter", "Reporter" };
+
+	private static final Color[] RANK_COLORS = {
+		new Color(255, 190, 45), new Color(255, 143, 58), new Color(224, 95, 208),
+		new Color(180, 100, 255), new Color(143, 123, 255), new Color(125, 134, 255),
+		new Color(80, 155, 255), new Color(79, 182, 232), new Color(73, 198, 176),
+		new Color(90, 200, 120), new Color(143, 207, 159), new Color(159, 176, 194) };
+
+	private static int rankIndex(int reports)
 	{
-		if (reports >= 250) return GOLD;
-		if (reports >= 100) return PURPLE;
-		if (reports >= 50) return BLUE;
-		if (reports >= 20) return RED;
-		return Color.LIGHT_GRAY;
+		for (int i = 0; i < RANK_AT.length; i++)
+		{
+			if (reports >= RANK_AT[i]) return i;
+		}
+		return RANK_AT.length - 1;
 	}
 
-	/** The same thresholds and names the website's leaderboard uses. */
+	static Color rankColor(int reports)
+	{
+		return RANK_COLORS[rankIndex(reports)];
+	}
+
 	static String rankName(int reports)
 	{
-		if (reports >= 250) return "Legend";
-		if (reports >= 100) return "Master";
-		if (reports >= 50) return "Veteran";
-		if (reports >= 20) return "Scout";
-		return "Reporter";
+		return RANK_NAMES[rankIndex(reports)];
 	}
 
 	private static long ageMinutes(long timestamp)
