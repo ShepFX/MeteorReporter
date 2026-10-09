@@ -89,6 +89,12 @@ final class TelescopeHint
 		return window(region, text);
 	}
 
+	/** The region strings a reading can produce, so the site table can be checked against them. */
+	static String[] regionNames()
+	{
+		return REGIONS.clone();
+	}
+
 	private static String findRegion(String text)
 	{
 		// The game says "Piscatoris or the Gnome Stronghold"; the paired names are listed with "and".

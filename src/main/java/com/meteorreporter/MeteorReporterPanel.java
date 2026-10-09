@@ -283,9 +283,14 @@ class MeteorReporterPanel extends PluginPanel
 		boolean stale = minutes >= STALE_MINUTES;
 		Color accent = stale ? tierColor(report.getTier()).darker().darker() : tierColor(report.getTier());
 
-		JLabel tier = new JLabel("Tier " + report.getTier());
+		// How long it can still be there is what decides whether to travel, so it sits beside the
+		// tier rather than being left as arithmetic for the reader.
+		long left = minutesLeft(report);
+		JLabel tier = new JLabel("Tier " + report.getTier() + "  ·  " + timeLeft(left) + " left");
 		tier.setFont(FontManager.getRunescapeSmallFont());
 		tier.setForeground(accent);
+		tier.setToolTipText("A star sheds a size every 7 minutes on its own, so this is the longest "
+			+ "it can still be standing. Anyone mining it will finish it sooner.");
 
 		JLabel spot = new JLabel("<html><div width=" + SPOT_WRAP_WIDTH + ">" + escape(report.getSpot()) + "</div></html>");
 		spot.setForeground(stale ? Color.GRAY : ColorScheme.LIGHT_GRAY_COLOR);
@@ -319,10 +324,25 @@ class MeteorReporterPanel extends PluginPanel
 			window.setToolTipText("Down somewhere in this region, not reported yet - hop over and look");
 		}
 
+		// A reading names a region and nothing finer, so the sites it could mean are the closest
+		// thing to an answer. The tooltip carries them rather than making every card tall.
+		java.util.List<String> sites = StarSpot.sitesIn(scout.getRegion());
+		String counted = sites.isEmpty() ? ""
+			: " <font color='#808080'>· " + sites.size() + " sites</font>";
 		JLabel region = new JLabel("<html><div width=" + SPOT_WRAP_WIDTH + ">"
 			+ escape(scout.getRegion() == null ? "Unknown region" : scout.getRegion())
+			+ counted
 			+ (landed ? " <font color='#808080'>· unreported</font>" : "") + "</div></html>");
 		region.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		if (!sites.isEmpty())
+		{
+			StringBuilder tip = new StringBuilder("<html>It can land at any of these:");
+			for (String site : sites)
+			{
+				tip.append("<br>&bull; ").append(escape(site));
+			}
+			region.setToolTipText(tip.append("</html>").toString());
+		}
 
 		JLabel age = new JLabel(age(ageMinutes(scout.getUpdatedAt())));
 		age.setFont(FontManager.getRunescapeSmallFont());
@@ -446,6 +466,28 @@ class MeteorReporterPanel extends PluginPanel
 	static String rankName(int reports)
 	{
 		return RANK_NAMES[rankIndex(reports)];
+	}
+
+	/** A crashed star drops one size every seven minutes whether or not anybody mines it. */
+	private static final long SIZE_INTERVAL_MS = 420_000L;
+
+	/**
+	 * Roughly how long a star has left. One reported at size N dies N intervals after that report,
+	 * which is the generous end: it assumes a full interval was left when it was seen.
+	 */
+	private static long minutesLeft(MeteorReport report)
+	{
+		long diesAt = report.getUpdatedAt() + report.getTier() * SIZE_INTERVAL_MS;
+		return Math.round((diesAt - Instant.now().toEpochMilli()) / 60000d);
+	}
+
+	static String timeLeft(long minutes)
+	{
+		if (minutes <= 0) return "gone";
+		if (minutes < 60) return minutes + "m";
+		long hours = minutes / 60;
+		long remainder = minutes % 60;
+		return remainder == 0 ? hours + "h" : hours + "h " + remainder + "m";
 	}
 
 	private static long ageMinutes(long timestamp)
