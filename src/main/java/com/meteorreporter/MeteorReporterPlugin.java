@@ -537,8 +537,11 @@ public class MeteorReporterPlugin extends Plugin
 			if (panel != null) SwingUtilities.invokeLater(panel::setDisabled);
 			return;
 		}
-		// Only poll while the sidebar is open - nobody is looking at the list otherwise.
-		if (!panelActive) return;
+		// Normally there is no point polling while the sidebar is shut, because nobody is looking
+		// at the list. Sharing empty sites is the exception: the sweep needs to know which reading
+		// is live for this world and which stars are listed on it, and both arrive here. Without
+		// this the feature would quietly do nothing the moment the panel was closed.
+		if (!panelActive && !config.shareEmptySites()) return;
 		refreshTask = executor.scheduleWithFixedDelay(this::refreshAll, 0,
 			REFRESH_SECONDS, TimeUnit.SECONDS);
 	}
