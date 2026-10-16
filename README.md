@@ -34,7 +34,7 @@ You can optionally enable **Show my IGN**. If you are the first person to report
 
 The two settings combine, so it is worth being deliberate about it: with automatic reporting *and* your name on, passing a star publishes your name, the world and the spot on a public website without you doing anything. Leave **Show my IGN** off if you would rather that only happened when you choose to report.
 
-Reports are refreshed automatically while the panel is open, and the **Refresh** button fetches them on demand. A completed star is removed when a nearby Meteor Reporter user witnesses its final layer disappear. Old reports also expire automatically.
+Reports are refreshed automatically while the panel is open, and the **Refresh** button fetches them on demand. A completed star is removed when a nearby Meteor Reporter user witnesses its final layer disappear, and a listing is taken down automatically if somebody arrives to find the star already gone. Old reports also expire automatically.
 
 ## Privacy
 

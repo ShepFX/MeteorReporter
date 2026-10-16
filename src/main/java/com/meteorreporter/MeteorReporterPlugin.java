@@ -68,6 +68,10 @@ public class MeteorReporterPlugin extends Plugin
 	private final Set<WorldPoint> reportedHere = new HashSet<>();
 	/** Sites already called empty for the reading in hand, so the same news is not sent twice. */
 	private final Set<String> emptySitesSent = new HashSet<>();
+	/** Reports for the world the player is on, so a listing can be checked against the scene. */
+	private final Map<WorldPoint, MeteorReport> activeHere = new HashMap<>();
+	/** Listed sites that read as empty once; a second look is needed before taking one down. */
+	private final Set<WorldPoint> emptyOnce = new HashSet<>();
 	/** The telescope reading for the world the player is on, or null when there is none. */
 	private StarScout scoutForCurrentWorld;
 	private final Set<WorldPoint> completedHere = new HashSet<>();
@@ -117,6 +121,8 @@ public class MeteorReporterPlugin extends Plugin
 		activeReportKeys.clear();
 		emptySitesSent.clear();
 		scoutForCurrentWorld = null;
+		activeHere.clear();
+		emptyOnce.clear();
 		refreshInFlight.set(false);
 		scoutRefreshInFlight.set(false);
 		scoutsUnavailable = false;
@@ -236,6 +242,7 @@ public class MeteorReporterPlugin extends Plugin
 			tierCheckTicks = 0;
 			verifyStarTiers();
 			reportEmptySites();
+			clearVanishedStars();
 		}
 	}
 
@@ -277,6 +284,8 @@ public class MeteorReporterPlugin extends Plugin
 			// A different world is a different reading, so nothing learnt here carries over.
 			emptySitesSent.clear();
 			scoutForCurrentWorld = null;
+			activeHere.clear();
+			emptyOnce.clear();
 		}
 	}
 
@@ -433,6 +442,44 @@ public class MeteorReporterPlugin extends Plugin
 		}
 	}
 
+	/**
+	 * Takes down a listing for a star that is no longer there. A report is otherwise only removed
+	 * when somebody stands close enough to watch the last layer go, so a star mined out while
+	 * nobody was looking stays on the list and sends the next person on a wasted trip.
+	 * <p>
+	 * A site must read as empty on two consecutive sweeps before it counts. A shrinking star is
+	 * replaced rather than edited, and the despawn can arrive before the respawn, so a single look
+	 * can catch a real star in the gap between its sizes - and wrongly deleting a live star is far
+	 * worse than leaving a dead one up for another three seconds.
+	 */
+	private void clearVanishedStars()
+	{
+		if (!config.sharingEnabled() || activeHere.isEmpty()) return;
+		if (client.getGameState() != GameState.LOGGED_IN) return;
+		WorldView worldView = client.getTopLevelWorldView();
+		if (worldView == null) return;
+		for (Map.Entry<WorldPoint, MeteorReport> entry : new ArrayList<>(activeHere.entrySet()))
+		{
+			WorldPoint point = entry.getKey();
+			// Only somewhere the client is rendering can be called empty.
+			if (LocalPoint.fromWorld(worldView, point) == null) continue;
+			if (tierAt(worldView, point) > 0 || visibleStars.containsKey(point))
+			{
+				emptyOnce.remove(point);
+				continue;
+			}
+			// A star the plugin is already handling as completed is not ours to report again.
+			if (pendingCompletion.contains(point) || completedHere.contains(point)) continue;
+			// add() is true the first time, which is the sweep that only records the suspicion.
+			if (emptyOnce.add(point)) continue;
+			log.debug("Listed star at {} on world {} is gone", point, entry.getValue().getWorld());
+			activeHere.remove(point);
+			reportedHere.remove(point);
+			reportClient.delete(entry.getValue(), () -> refreshReports(true),
+				error -> log.debug("Unable to clear a vanished star: {}", error));
+		}
+	}
+
 	private void sendScout(TelescopeHint hint)
 	{
 		long now = Instant.now().toEpochMilli();
@@ -528,12 +575,25 @@ public class MeteorReporterPlugin extends Plugin
 			{
 				refreshInFlight.set(false);
 				activeReportKeys.clear();
+				Map<WorldPoint, MeteorReport> here = new HashMap<>();
 				List<MeteorReport> visible = new ArrayList<>();
 				for (MeteorReport report : reports)
 				{
 					activeReportKeys.add(reportKey(report.getWorld(), report.getX(), report.getY(), report.getPlane()));
+					// Reports for the world the player is on, so the tick sweep can check whether
+					// the star listed at each one is actually still standing there.
+					if (report.getWorld() == world)
+					{
+						here.put(new WorldPoint(report.getX(), report.getY(), report.getPlane()), report);
+					}
 					if (report.getTier() >= minimumTier) visible.add(report);
 				}
+				clientThread.invoke(() ->
+				{
+					activeHere.clear();
+					activeHere.putAll(here);
+					emptyOnce.retainAll(activeHere.keySet());
+				});
 				int hidden = reports.size() - visible.size();
 				SwingUtilities.invokeLater(() -> { if (panel != null) panel.setReports(visible, world, hidden); });
 			},
