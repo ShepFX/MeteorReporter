@@ -425,6 +425,10 @@ public class MeteorReporterPlugin extends Plugin
 		if (client.getGameState() != GameState.LOGGED_IN) return;
 		StarScout scout = scoutForCurrentWorld;
 		if (scout == null) return;
+		// Nothing is proved until the star has certainly come down. While the window is still open
+		// an empty site may be where it lands a minute later, and crossing it off would send
+		// people away from the one place worth looking.
+		if (Instant.now().toEpochMilli() < scout.getLatestAt()) return;
 		WorldView worldView = client.getTopLevelWorldView();
 		if (worldView == null) return;
 		for (String site : StarSpot.sitesIn(scout.getRegion()))
