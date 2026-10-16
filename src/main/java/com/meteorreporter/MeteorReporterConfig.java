@@ -33,6 +33,17 @@ public interface MeteorReporterConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "shareEmptySites",
+		name = "Share empty landing sites",
+		description = "When a telescope reading says a star is due on your world, shares which of that region's landing sites you walk past with no star on them, so everyone can rule them out. Always anonymous, never named",
+		warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers"
+	)
+	default boolean shareEmptySites()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "showReporterName",
 		name = "Show my IGN",
 		description = "Shows your RuneScape name on the stars and telescope readings you share, and ranks you on the contributor leaderboard. With automatic reporting on, this publishes where you are whenever you pass a star",

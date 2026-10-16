@@ -28,6 +28,8 @@ Enable **Share telescope readings** to contribute to the **Scouted** tab. Lookin
 
 Enable **Report stars automatically** and a star is shared the moment it comes into view, with no right-clicking. It is the same report the menu option sends, and you get the same chat line telling you it went. Stars someone has already shared are not sent again. This is off by default.
 
+Enable **Share empty landing sites** and the plugin does the opposite job as well. While a telescope reading says a star is due on your world, any of that region's landing sites you walk past with no star on them are shared so everybody can rule them out - six possible sites becomes two. It only looks while a reading is live, only at that reading's own region, and only at sites your client is actually rendering. These reports are always anonymous and never carry your name, even with **Show my IGN** on, because where you looked is really where you were. This is off by default.
+
 You can optionally enable **Show my IGN**. If you are the first person to report a meteor, your name and contribution count will appear on its listing, and you are ranked on the contributor leaderboard. Sharing anonymously counts for nothing on the leaderboard by design — no name is sent, and nothing ties your anonymous reports to each other. Name sharing is disabled by default.
 
 The two settings combine, so it is worth being deliberate about it: with automatic reporting *and* your name on, passing a star publishes your name, the world and the spot on a public website without you doing anything. Leave **Show my IGN** off if you would rather that only happened when you choose to report.
@@ -36,7 +38,7 @@ Reports are refreshed automatically while the panel is open, and the **Refresh**
 
 ## Privacy
 
-Shared reports contain the star's world, tier, landing spot, coordinates, and update time. Shared telescope readings contain the world, the region named by the telescope, and the time window it gave. Neither contains your account name or information about nearby players.
+Shared reports contain the star's world, tier, landing spot, coordinates, and update time. A shared empty site contains the world and the landing site only - no name, no id, nothing that links one to another. Shared telescope readings contain the world, the region named by the telescope, and the time window it gave. Neither contains your account name or information about nearby players.
 
 Sharing is disabled by default because it communicates with a third-party service. As with any online service, the service operator may receive your IP address when you enable shared reports.
 

@@ -12,6 +12,7 @@ final class StarSpot
 	private static final Map<Long, String> SPOTS = new HashMap<>();
 	/** Landing sites by the region a telescope names, so a reading can list what it might mean. */
 	private static final Map<String, List<String>> SITES = new HashMap<>();
+	private static final Map<String, WorldPoint> POINTS = new HashMap<>();
 
 	static
 	{
@@ -105,6 +106,13 @@ final class StarSpot
 	{
 		SPOTS.put(key(x, y), name);
 		SITES.computeIfAbsent(region, unused -> new ArrayList<>()).add(name);
+		POINTS.put(name, new WorldPoint(x, y, 0));
+	}
+
+	/** Where a named landing site is, for checking whether a star is standing on it. */
+	static WorldPoint pointOf(String name)
+	{
+		return POINTS.get(name);
 	}
 
 	static String forPoint(WorldPoint point)

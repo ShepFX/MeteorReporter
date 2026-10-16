@@ -1,6 +1,7 @@
 package com.meteorreporter;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -25,6 +26,7 @@ class MeteorReportClient
 	private static final HttpUrl API_URL = HttpUrl.get("https://meteor.shep.rip/api/v1");
 	private static final HttpUrl REPORTS_URL = API_URL.newBuilder().addPathSegment("reports").build();
 	private static final HttpUrl SCOUTS_URL = API_URL.newBuilder().addPathSegment("scouts").build();
+	private static final HttpUrl CLEAR_URL = API_URL.newBuilder().addPathSegment("clear").build();
 	private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 	private static final Type REPORT_LIST = new TypeToken<List<MeteorReport>>() { }.getType();
 	private static final Type SCOUT_LIST = new TypeToken<List<StarScout>>() { }.getType();
@@ -119,6 +121,21 @@ class MeteorReportClient
 	{
 		Request request = new Request.Builder().url(SCOUTS_URL)
 			.post(RequestBody.create(JSON, gson.toJson(scout))).build();
+		execute(request, success, failure);
+	}
+
+	/**
+	 * Says a landing site had no star on it. Nothing identifying is sent: a star report is a fact
+	 * about the world, but where you looked is really where you were, so this carries the world and
+	 * the place and nothing else.
+	 */
+	void reportEmpty(int world, String spot, Runnable success, Consumer<String> failure)
+	{
+		JsonObject body = new JsonObject();
+		body.addProperty("world", world);
+		body.addProperty("spot", spot);
+		Request request = new Request.Builder().url(CLEAR_URL)
+			.post(RequestBody.create(JSON, gson.toJson(body))).build();
 		execute(request, success, failure);
 	}
 

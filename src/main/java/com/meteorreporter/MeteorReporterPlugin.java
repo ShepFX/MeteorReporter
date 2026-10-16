@@ -66,6 +66,10 @@ public class MeteorReporterPlugin extends Plugin
 	private final Map<WorldPoint, StarObservation> visibleStars = new HashMap<>();
 	private final Set<WorldPoint> pendingCompletion = new HashSet<>();
 	private final Set<WorldPoint> reportedHere = new HashSet<>();
+	/** Sites already called empty for the reading in hand, so the same news is not sent twice. */
+	private final Set<String> emptySitesSent = new HashSet<>();
+	/** The telescope reading for the world the player is on, or null when there is none. */
+	private StarScout scoutForCurrentWorld;
 	private final Set<WorldPoint> completedHere = new HashSet<>();
 	private final Set<String> activeReportKeys = ConcurrentHashMap.newKeySet();
 	private final AtomicBoolean refreshInFlight = new AtomicBoolean();
@@ -111,6 +115,8 @@ public class MeteorReporterPlugin extends Plugin
 		reportedHere.clear();
 		completedHere.clear();
 		activeReportKeys.clear();
+		emptySitesSent.clear();
+		scoutForCurrentWorld = null;
 		refreshInFlight.set(false);
 		scoutRefreshInFlight.set(false);
 		scoutsUnavailable = false;
@@ -229,6 +235,7 @@ public class MeteorReporterPlugin extends Plugin
 		{
 			tierCheckTicks = 0;
 			verifyStarTiers();
+			reportEmptySites();
 		}
 	}
 
@@ -267,6 +274,9 @@ public class MeteorReporterPlugin extends Plugin
 			reportedHere.clear();
 			completedHere.clear();
 			activeReportKeys.clear();
+			// A different world is a different reading, so nothing learnt here carries over.
+			emptySitesSent.clear();
+			scoutForCurrentWorld = null;
 		}
 	}
 
@@ -389,6 +399,38 @@ public class MeteorReporterPlugin extends Plugin
 					"Meteor report failed: " + error + ".", null));
 			}
 		});
+	}
+
+	/**
+	 * Walking past a landing site with nothing on it is worth as much as finding a star, because a
+	 * telescope only narrows one down to a region. Any candidate site that is loaded in the scene
+	 * and empty is ruled out for everyone.
+	 * <p>
+	 * Deliberately narrow. It only runs while a telescope reading is live for this world, and only
+	 * for that reading's own region, so it is a handful of sites for the length of one window
+	 * rather than a running account of where the player has been. Nothing identifying is sent.
+	 */
+	private void reportEmptySites()
+	{
+		if (!config.sharingEnabled() || !config.shareEmptySites()) return;
+		if (client.getGameState() != GameState.LOGGED_IN) return;
+		StarScout scout = scoutForCurrentWorld;
+		if (scout == null) return;
+		WorldView worldView = client.getTopLevelWorldView();
+		if (worldView == null) return;
+		for (String site : StarSpot.sitesIn(scout.getRegion()))
+		{
+			if (emptySitesSent.contains(site)) continue;
+			WorldPoint point = StarSpot.pointOf(site);
+			// Only a site the client is actually rendering can be called empty; anywhere else the
+			// plugin simply has no idea, and guessing would be worse than saying nothing.
+			if (point == null || LocalPoint.fromWorld(worldView, point) == null) continue;
+			if (tierAt(worldView, point) > 0) continue;
+			emptySitesSent.add(site);
+			log.debug("No star at {} on world {}", site, scout.getWorld());
+			reportClient.reportEmpty(scout.getWorld(), site, this::refreshScouts,
+				error -> log.debug("Unable to share an empty landing site: {}", error));
+		}
 	}
 
 	private void sendScout(TelescopeHint hint)
@@ -517,6 +559,18 @@ public class MeteorReporterPlugin extends Plugin
 			scouts ->
 			{
 				scoutRefreshInFlight.set(false);
+				// Remember this world's reading so the tick sweep knows which sites to look at,
+				// and forget which sites were called empty once the reading itself changes.
+				StarScout mine = scouts.stream().filter(scout -> scout.getWorld() == world)
+					.findFirst().orElse(null);
+				clientThread.invoke(() ->
+				{
+					boolean changed = mine == null || scoutForCurrentWorld == null
+						|| scoutForCurrentWorld.getWorld() != mine.getWorld()
+						|| scoutForCurrentWorld.getUpdatedAt() != mine.getUpdatedAt();
+					if (changed) emptySitesSent.clear();
+					scoutForCurrentWorld = mine;
+				});
 				SwingUtilities.invokeLater(() -> { if (panel != null) panel.setScouts(scouts, world); });
 			},
 			(error, code) ->

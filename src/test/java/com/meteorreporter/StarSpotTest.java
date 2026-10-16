@@ -5,6 +5,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -40,6 +41,20 @@ public class StarSpotTest
 		assertTrue(asgarnia.contains("Rimmington mine"));
 		assertTrue(asgarnia.contains("Taverley house portal"));
 		assertFalse(asgarnia.contains("Varrock east bank"));
+	}
+
+	@Test
+	public void everySiteHasAPointToCheck()
+	{
+		// Ruling a site out means looking at where it is, so a name without coordinates would be
+		// silently unprovable - the sweep would skip it forever and never say why.
+		for (String region : TelescopeHint.regionNames())
+		{
+			for (String site : StarSpot.sitesIn(region))
+			{
+				assertNotNull("no coordinates for " + site, StarSpot.pointOf(site));
+			}
+		}
 	}
 
 	@Test
